@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>DMS MONEY MANAGER</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{--brand:#0b75c9;--accent:#125fa8}
+body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#f4f7fb;color:#222;padding:18px}
+.wrap{max-width:1100px;margin:0 auto}
+.header{display:flex;align-items:center;gap:12px;background:linear-gradient(90deg,var(--brand),var(--accent));padding:12px;border-radius:10px;color:#fff}
+.logo{height:64px;width:64px;object-fit:contain;background:#fff;padding:6px;border-radius:8px}
+.title{font-size:20px;margin:0}
+.subtitle{font-size:12px;opacity:.95}
+.controls{display:flex;gap:8px;align-items:center}
+.grid{display:grid;grid-template-columns:1fr 380px;gap:16px;margin-top:16px}
+.card{background:#fff;padding:14px;border-radius:10px;box-shadow:0 8px 20px rgba(0,0,0,0.06)}
+label{display:block;font-weight:700;margin-top:8px}
+input,select,button,textarea{width:100%;padding:8px;border-radius:6px;border:1px solid #dfeefb;box-sizing:border-box;margin-top:6px}
+.row{display:flex;gap:8px}
+.row .col{flex:1}
+button.btn{background:var(--brand);color:#fff;border:none;padding:9px;border-radius:8px;cursor:pointer}
+.thumb{width:64px;height:48px;object-fit:cover;border-radius:6px;margin:4px;border:1px solid #eef6ff}
+.table{width:100%;border-collapse:collapse;margin-top:10px}
+.table th,.table td{padding:8px;border-bottom:1px solid #eef6ff;text-align:left;vertical-align:middle}
+.table th{background:#f8fbff}
+.balance-row{display:flex;gap:8px;margin-bottom:10px}
+.balance-box{flex:1;padding:10px;border-radius:8px;background:#fff;border:1px solid #eaf4ff;text-align:center}
+.delete-btn{background:#ff4d4f;color:#fff;border:none;padding:6px 8px;border-radius:6px;cursor:pointer}
+.small{font-size:12px;color:#666}
+@media(max-width:900px){.grid{grid-template-columns:1fr}.header{flex-direction:column;align-items:flex-start}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <img id="logoImg" class="logo" src="" alt="logo">
+    <div style="flex:1">
+      <div class="title">DMS MONEY MANAGER</div>
+      <div class="subtitle">Shared Money Manager — Manas · Deep · Supriya (Offline)</div>
+    </div>
+    <div class="controls">
+      <label class="small" for="logoInput" style="margin:0">Upload Logo</label>
+      <input id="logoInput" type="file" accept="image/*" style="width:auto"/>
+      <label class="small" for="sigInput" style="margin:0">Upload Signature</label>
+      <input id="sigInput" type="file" accept="image/*" style="width:auto"/>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- Left: form -->
+    <div class="card">
+      <h3 style="margin:0 0 8px">Add Transaction</h3>
+
+      <div class="row">
+        <div style="width:160px">
+          <label>Date</label>
+          <input id="txDate" type="date"/>
+        </div>
+        <div class="col">
+          <label>Category</label>
+          <input id="txCategory" placeholder="e.g. Food, Travel"/>
+        </div>
+      </div>
+
+      <label>Description / Note</label>
+      <input id="txDesc" placeholder="Short description">
+
+      <div class="row">
+        <div style="width:150px">
+          <label>Paid By</label>
+          <select id="txPayer"><option>Manas</option><option>Deep</option><option>Supriya</option></select>
+        </div>
+        <div class="col">
+          <label>Type</label>
+          <select id="txType"><option value="expense">Expense</option><option value="income">Income</option></select>
+        </div>
+        <div style="width:150px">
+          <label>Amount (₹)</label>
+          <input id="txAmount" type="number" step="0.01" placeholder="0.00"/>
+        </div>
+      </div>
+
+      <label>Attach Photos (optional)</label>
+      <input id="txPhotos" type="file" accept="image/*" multiple/>
+      <div id="photoPreview" style="display:flex;flex-wrap:wrap;margin-top:8px"></div>
+
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button id="addBtn" class="btn">Save Transaction</button>
+        <button id="clearBtn" style="padding:8px;border-radius:8px">Clear</button>
+        <button id="pdfBtn" style="padding:8px;border-radius:8px">Download Report (PDF)</button>
+      </div>
+      <div class="small" style="margin-top:10px">Expenses auto-split equally between the three. Balances update instantly.</div>
+    </div>
+
+    <!-- Right: balances & table -->
+    <div class="card">
+      <h3 style="margin-top:0">Balances</h3>
+      <div class="balance-row">
+        <div class="balance-box" id="balManas">Manas<br><strong>₹0.00</strong></div>
+        <div class="balance-box" id="balDeep">Deep<br><strong>₹0.00</strong></div>
+        <div class="balance-box" id="balSupriya">Supriya<br><strong>₹0.00</strong></div>
+      </div>
+
+      <h3 style="margin-top:12px">Transactions <span class="small">(most recent first)</span></h3>
+      <div id="txList" style="max-height:420px;overflow:auto"></div>
+
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button id="exportBtn" style="padding:8px;border-radius:8px">Export JSON</button>
+        <button id="importBtn" style="padding:8px;border-radius:8px">Import JSON</button>
+        <input id="importFile" type="file" accept="application/json" style="display:none"/>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* Final offline DMS Money Manager */
+const LS_RECORDS = 'dms_money_records_vfinal';
+const LS_LOGO = 'dms_money_logo_vfinal';
+const LS_SIG = 'dms_money_sig_vfinal';
+const PEOPLE = ['Manas','Deep','Supriya'];
+
+let records = JSON.parse(localStorage.getItem(LS_RECORDS) || '[]');
+
+/* DOM refs */
+const logoImg = document.getElementById('logoImg');
+const logoInput = document.getElementById('logoInput');
+const sigInput = document.getElementById('sigInput');
+
+const dateEl = document.getElementById('txDate');
+const catEl = document.getElementById('txCategory');
+const descEl = document.getElementById('txDesc');
+const payerEl = document.getElementById('txPayer');
+const typeEl = document.getElementById('txType');
+const amtEl = document.getElementById('txAmount');
+const photosEl = document.getElementById('txPhotos');
+const photoPreview = document.getElementById('photoPreview');
+
+const addBtn = document.getElementById('addBtn');
+const clearBtn = document.getElementById('clearBtn');
+const pdfBtn = document.getElementById('pdfBtn');
+const txList = document.getElementById('txList');
+const balManas = document.getElementById('balManas');
+const balDeep = document.getElementById('balDeep');
+const balSupriya = document.getElementById('balSupriya');
+const exportBtn = document.getElementById('exportBtn');
+const importBtn = document.getElementById('importBtn');
+const importFile = document.getElementById('importFile');
+
+dateEl.valueAsDate = new Date();
+payerEl.value = PEOPLE[0];
+
+let currentPhotos = [];
+
+/* Initialize images from localStorage */
+(function initImages(){
+  const savedLogo = localStorage.getItem(LS_LOGO);
+  if(savedLogo) logoImg.src = savedLogo;
+})();
+
+/* Logo upload */
+logoInput.addEventListener('change', async (e)=>{
+  const f = e.target.files[0];
+  if(!f) return;
+  const data = await fileToDataURL(f);
+  localStorage.setItem(LS_LOGO, data);
+  logoImg.src = data;
+  alert('Logo saved to this browser.');
+});
+
+/* Signature upload */
+sigInput.addEventListener('change', async (e)=>{
+  const f = e.target.files[0];
+  if(!f) return;
+  const data = await fileToDataURL(f);
+  localStorage.setItem(LS_SIG, data);
+  alert('Signature saved to this browser (used in PDF).');
+});
+
+/* photos handling */
+photosEl.addEventListener('change', async (e)=>{
+  photoPreview.innerHTML = ''; currentPhotos=[];
+  const files = Array.from(e.target.files).slice(0,6);
+  for(const f of files){
+    const d = await fileToDataURL(f);
+    currentPhotos.push(d);
+    const img = document.createElement('img'); img.src = d; img.className = 'thumb';
+    photoPreview.appendChild(img);
+  }
+});
+
+function fileToDataURL(file){
+  return new Promise((res,rej)=>{
+    const fr = new FileReader();
+    fr.onload = ()=> res(fr.result);
+    fr.onerror = rej;
+    fr.readAsDataURL(file);
+  });
+}
+
+/* Add transaction */
+addBtn.addEventListener('click', ()=>{
+  const date = dateEl.value || (new Date()).toISOString().slice(0,10);
+  const category = catEl.value.trim();
+  const desc = descEl.value.trim();
+  const payer = payerEl.value;
+  const type = typeEl.value;
+  const amount = parseFloat(amtEl.value);
+  if(!payer || isNaN(amount) || amount <= 0){ alert('Please enter valid payer and amount'); return; }
+  const rec = { id: String(Date.now()), date, category, desc, payer, type, amount: Number(amount.toFixed(2)), photos: currentPhotos.slice() };
+  records.unshift(rec);
+  localStorage.setItem(LS_RECORDS, JSON.stringify(records));
+  resetForm(); renderAll();
+});
+
+/* Clear form */
+function resetForm(){
+  dateEl.valueAsDate = new Date(); catEl.value=''; descEl.value=''; payerEl.value = PEOPLE[0]; typeEl.value='expense';
+  amtEl.value=''; photosEl.value=''; photoPreview.innerHTML=''; currentPhotos=[];
+}
+clearBtn.addEventListener('click', resetForm);
+
+/* Render transactions and balances */
+function renderAll(){
+  if(records.length === 0){
+    txList.innerHTML = '<div class="small" style="padding:8px;color:#666">No transactions yet</div>';
+  } else {
+    let html = '<table class="table"><thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Payer</th><th>Type</th><th>Amount</th><th>Photos</th><th>Delete</th></tr></thead><tbody>';
+    for(const r of records){
+      const ph = (r.photos && r.photos.length) ? r.photos.slice(0,3).map(u=>`<img src="${u}" class="thumb">`).join('') : '';
+      html += `<tr id="row_${r.id}"><td>${escapeHtml(r.date)}</td><td>${escapeHtml(r.category||'')}</td><td>${escapeHtml(r.desc||'')}</td><td>${escapeHtml(r.payer)}</td><td>${escapeHtml(r.type)}</td><td>₹${Number(r.amount).toFixed(2)}</td><td>${ph}</td><td><button class="delete-btn" onclick="deleteRecord('${r.id}')">🗑️</button></td></tr>`;
+    }
+    html += '</tbody></table>';
+    txList.innerHTML = html;
+  }
+  const bal = computeBalances();
+  balManas.innerHTML = `Manas<br><strong>₹${bal['Manas'].toFixed(2)}</strong>`;
+  balDeep.innerHTML = `Deep<br><strong>₹${bal['Deep'].toFixed(2)}</strong>`;
+  balSupriya.innerHTML = `Supriya<br><strong>₹${bal['Supriya'].toFixed(2)}</strong>`;
+}
+
+/* Delete */
+window.deleteRecord = function(id){
+  if(!confirm('Delete this transaction?')) return;
+  records = records.filter(r => r.id !== id);
+  localStorage.setItem(LS_RECORDS, JSON.stringify(records));
+  renderAll();
+}
+
+/* Balance logic */
+function computeBalances(){
+  const res = { 'Manas':0, 'Deep':0, 'Supriya':0 };
+  for(const r of records){
+    const amt = Number(r.amount) || 0;
+    if(r.type === 'income'){
+      res[r.payer] += amt;
+    } else {
+      const share = Math.round((amt / 3 + Number.EPSILON) * 100) / 100;
+      res[r.payer] += Math.round((amt - share) * 100) / 100;
+      for(const p of PEOPLE){
+        if(p === r.payer) continue;
+        res[p] -= share;
+      }
+    }
+  }
+  return res;
+}
+
+/* Export / Import JSON */
+exportBtn.addEventListener('click', ()=>{
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(records,null,2));
+  const a = document.createElement('a'); a.href = dataStr; a.download = 'dms_money_records.json'; a.click();
+});
+importBtn.addEventListener('click', ()=> importFile.click());
+importFile.addEventListener('change', async (e)=>{
+  const f = e.target.files[0]; if(!f) return;
+  const txt = await f.text();
+  try{
+    const arr = JSON.parse(txt);
+    if(Array.isArray(arr)){
+      records = arr.concat(records);
+      localStorage.setItem(LS_RECORDS, JSON.stringify(records));
+      renderAll();
+      alert('Imported ' + arr.length + ' records');
+    } else alert('Invalid JSON file');
+  } catch(err){ alert('Invalid JSON file'); }
+});
+
+/* PDF generation */
+pdfBtn.addEventListener('click', async ()=>{
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'mm', format:'a4'});
+  const pageW = doc.internal.pageSize.getWidth();
+  const margin = 12;
+  const logo = localStorage.getItem(LS_LOGO);
+  const sig = localStorage.getItem(LS_SIG);
+  try{ if(logo && logo.length>20) doc.addImage(logo, logo.indexOf('png')!==-1?'PNG':'JPEG', margin, 10, 36, 0); }catch(e){console.warn('logo add error', e);}
+  doc.setFontSize(16); doc.setTextColor(11,117,201); doc.text('DMS MONEY MANAGER', margin + 44, 18);
+  doc.setFontSize(12); doc.setTextColor(40,40,40); doc.text('Shared Money Manager Report', margin + 44, 24);
+  doc.setLineWidth(0.4); doc.setDrawColor(200); doc.line(margin, 32, pageW - margin, 32);
+  const bal = computeBalances(); let y = 40; doc.setFontSize(10);
+  doc.text('Report generated: ' + (new Date()).toLocaleString(), margin, y); y += 8;
+  doc.text(`Manas: ₹${bal['Manas'].toFixed(2)}`, margin, y); doc.text(`Deep: ₹${bal['Deep'].toFixed(2)}`, margin + 70, y); doc.text(`Supriya: ₹${bal['Supriya'].toFixed(2)}`, margin + 140, y); y += 10;
+  doc.setFontSize(10); doc.text('Date', margin, y); doc.text('Payer', margin+28, y); doc.text('Type', margin+60, y); doc.text('Category', margin+84, y); doc.text('Description', margin+118, y); doc.text('Amount', pageW - margin - 30, y);
+  y += 4; doc.line(margin, y, pageW - margin, y); y += 6; doc.setFontSize(9);
+  for(const r of records){
+    if(y > 260){ doc.addPage(); y = 18; }
+    const desc = (r.desc || '').toString().slice(0,40);
+    doc.text(String(r.date||''), margin, y);
+    doc.text(String(r.payer||''), margin+28, y);
+    doc.text(String(r.type||''), margin+60, y);
+    doc.text(String(r.category||''), margin+84, y);
+    doc.text(desc, margin+118, y);
+    doc.text('₹' + Number(r.amount).toFixed(2), pageW - margin - 30, y);
+    y += 7;
+  }
+  y += 10;
+  const totalIncome = records.filter(r=>r.type==='income').reduce((s,r)=>s + Number(r.amount||0), 0);
+  const totalExpense = records.filter(r=>r.type==='expense').reduce((s,r)=>s + Number(r.amount||0), 0);
+  doc.setFontSize(11); doc.setTextColor(11,117,201);
+  doc.text(`Total Income: ₹${totalIncome.toFixed(2)}`, margin, y);
+  doc.text(`Total Expense: ₹${totalExpense.toFixed(2)}`, margin + 80, y);
+  y += 12;
+  try{ if(sig && sig.length>20) doc.addImage(sig, sig.indexOf('png')!==-1?'PNG':'JPEG', pageW - margin - 40, y, 40, 30); }catch(e){}
+  doc.setFontSize(9); doc.setTextColor(100,100,100);
+  doc.text('Authorized Signature', pageW - margin - 55, y + 35);
+  doc.setDrawColor(230); doc.line(margin, 280, pageW - margin, 280);
+  doc.setFontSize(9); doc.setTextColor(120,120,120);
+  doc.text('Thank you for using DMS MONEY MANAGER', margin, 286);
+  doc.save('DMS_Money_Report_' + (new Date()).toISOString().slice(0,10) + '.pdf');
+});
+
+/* util */
+function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* initial render */
+renderAll();
+</script>
+</body>
+</html>
